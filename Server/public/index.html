@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ESP32 LED Control</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f2f2f2; padding: 20px; }
+    .relay { background: #fff; padding: 10px; margin: 10px 0; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; }
+    button { padding: 8px 15px; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; }
+    .on { background: #4CAF50; color: white; }
+    .off { background: #f44336; color: white; }
+  </style>
+</head>
+<body>
+  <h1>ESP32 Smart Home Control</h1>
+  <div id="relays"></div>
+
+  <script>
+    const API_URL = "/api/relays";
+
+    async function fetchRelays() {
+      const res = await fetch(API_URL);
+      const data = await res.json();
+      const container = document.getElementById("relays");
+      container.innerHTML = "";
+      data.forEach(relay => {
+        const div = document.createElement("div");
+        div.className = "relay";
+        div.innerHTML = `
+          <span>Relay ${relay.relayId}: ${relay.state ? "ON" : "OFF"}</span>
+          <button class="${relay.state ? "off" : "on"}" onclick="toggleRelay(${relay.relayId})">
+            ${relay.state ? "Turn OFF" : "Turn ON"}
+          </button>`;
+        container.appendChild(div);
+      });
+    }
+
+    async function toggleRelay(id) {
+      await fetch(`${API_URL}/${id}/toggle`, { method: "POST" });
+      fetchRelays();
+    }
+
+    fetchRelays();
+    setInterval(fetchRelays, 3000); // Auto-refresh every 3 sec
+  </script>
+</body>
+</html>
