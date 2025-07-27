@@ -1,13 +1,15 @@
 import axios from "axios";
 import Relay from "../models/Relay.js";
 
-const ESP32_IP = "http://192.168.1.100"; // <-- Replace with your ESP32's STA IP
+const ESP32_IP = "http://192.168.0.107"; // ESP32 local IP
 
 // Get current relay states from ESP32
 export const getRelayStatus = async (req, res) => {
   try {
     const response = await axios.get(`${ESP32_IP}/status`);
-    const espStates = JSON.parse(response.data).relays; // [true, false, ...]
+    const espStates = response.data.relays;
+
+    if (!Array.isArray(espStates)) throw new Error("Invalid relay data format");
 
     // Sync DB
     for (let i = 0; i < espStates.length; i++) {
@@ -21,7 +23,7 @@ export const getRelayStatus = async (req, res) => {
     const allRelays = await Relay.find();
     res.json(allRelays);
   } catch (error) {
-    console.error(error);
+    console.error("Error in getRelayStatus:", error.message);
     res.status(500).json({ error: "Failed to get ESP32 status" });
   }
 };
@@ -34,9 +36,8 @@ export const toggleRelay = async (req, res) => {
 
     // Get updated states
     const response = await axios.get(`${ESP32_IP}/status`);
-    const espStates = JSON.parse(response.data).relays;
+    const espStates = response.data.relays;
 
-    // Update DB
     await Relay.findOneAndUpdate(
       { relayId },
       { state: espStates[relayId], updatedAt: new Date() },
@@ -45,7 +46,7 @@ export const toggleRelay = async (req, res) => {
 
     res.json({ relayId, state: espStates[relayId] });
   } catch (error) {
-    console.error(error);
+    console.error("Error in toggleRelay:", error.message);
     res.status(500).json({ error: "Failed to toggle relay" });
   }
 };
