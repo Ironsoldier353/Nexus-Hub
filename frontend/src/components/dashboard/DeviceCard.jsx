@@ -65,7 +65,7 @@ const DeviceCard = ({ device, deviceId }) => {
           <div className="flex items-center space-x-2">
             <div className={`w-2 h-2 rounded-full ${status === "on" ? "bg-green-500" : "bg-gray-400"}`} />
             <span className="text-sm text-gray-600">
-              {status === "on" ? "Active" : "Inactive"}
+              {status === "active" ? "Active" : "Inactive"}
             </span>
           </div>
 
