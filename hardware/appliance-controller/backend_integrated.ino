@@ -13,7 +13,7 @@ const char* ap_ssid = "Appliance_Controller";
 const char* ap_password = "nexus_hub";
 
 // Backend server URL
-const char* serverURL = "https://smart-home-60xb.onrender.com/api/v1/devices";
+const char* serverURL = "https://nexus-hub-vvqm.onrender.com/api/v1/devices";
 
 // Static IP for AP mode - where the AP serves
 IPAddress local_IP(192, 168, 4, 1);
@@ -40,13 +40,11 @@ bool isConfigured = false;
 String configuredSSID = "";
 String configuredPassword = "";
 String deviceId = "";
-String applianceIds[4] = {"", "", "", ""};
+String deviceName = "";
 
 // Polling intervals
-const unsigned long validationInterval = 15000; // 15 seconds
-const unsigned long statusUpdateInterval = 60000; // 1 minute
+const unsigned long validationInterval = 60000; // 30 seconds for IP updates
 unsigned long lastValidationTime = 0;
-unsigned long lastStatusUpdateTime = 0;
 
 // Preferences for storing configuration
 Preferences preferences;
@@ -57,11 +55,6 @@ void setRelayState(int relayIndex, bool state) {
   relayStates[relayIndex] = state;
   digitalWrite(relayPins[relayIndex], state);
   Serial.printf("Relay %d (%s) set to %s\n", relayIndex + 1, applianceNames[relayIndex].c_str(), state == LOW ? "ON" : "OFF");
-  
-  // Update backend if configured and appliance ID exists
-  if (isConfigured && applianceIds[relayIndex].length() > 0) {
-    updateApplianceState(applianceIds[relayIndex], state == LOW); // LOW = ON
-  }
 }
 
 void toggleRelay(int relayIndex) {
@@ -91,20 +84,22 @@ String generateHTML() {
   
   // Network information
   html += "<div class=\"ip-info\">📶 STA IP: " + WiFi.localIP().toString() + "<br>📡 AP IP: " + WiFi.softAPIP().toString() + "<br>Network: " + String(ap_ssid) + "</div>";
-  html += "<div class=\"control-info\">Simultaneous WiFi Client & Access Point </div>";
+  html += "<div class=\"control-info\">Simultaneous WiFi Client & Access Point | Local Control</div>";
   
   // Backend status
-  html += "<div class=\"backend-status\">" + String(isConfigured ? "🌐 Connected to Server | Device ID: " + deviceId : "⚠️ Waiting for Backend Configuration") + "</div>";
+  String statusText = isConfigured ? "🌐 Connected to Backend" : "⚠️ Waiting for Backend Configuration";
+  if (isConfigured && deviceName.length() > 0) {
+    statusText += " | Device: " + deviceName;
+  } else if (isConfigured && deviceId.length() > 0) {
+    statusText += " | ID: " + deviceId.substring(deviceId.length()-6);
+  }
+  html += "<div class=\"backend-status\">" + statusText + "</div>";
   
   html += "<div class=\"content\">";
 
   for (int i = 0; i < 4; i++) {
     bool isOn = (relayStates[i] == LOW);
-    html += "<div class=\"appliance-card\"><div class=\"appliance-name\">" + applianceNames[i];
-    if (isConfigured && applianceIds[i].length() > 0) {
-      html += " <small style=\"color:#666\">(ID: " + applianceIds[i].substring(applianceIds[i].length()-6) + ")</small>";
-    }
-    html += "</div>";
+    html += "<div class=\"appliance-card\"><div class=\"appliance-name\">" + applianceNames[i] + "</div>";
     html += "<span class=\"status " + String(isOn ? "on" : "off") + "\">" + (isOn ? "ON" : "OFF") + "</span>";
     html += "<form action=\"/toggle_relay_" + String(i) + "\" method=\"GET\" style=\"margin:0\">";
     html += "<button class=\"toggle-btn " + String(isOn ? "on" : "off") + "\" type=\"submit\">";
@@ -112,7 +107,7 @@ String generateHTML() {
   }
 
   html += "<form action=\"/refresh\" method=\"GET\"><button class=\"refresh-btn\" type=\"submit\" onclick=\"manualRefresh()\">🔄 Refresh Status</button></form>";
-  html += "</div><div class=\"footer\">Nexus Crew | Appliance Controller<br>Mode: Dual ( STA + AP ) </div></div></body></html>";
+  html += "</div><div class=\"footer\">Nexus Crew | ESP32 Controller<br>Mode: Dual STA + AP | Local Control</div></div></body></html>";
   return html;
 }
 
@@ -136,7 +131,8 @@ void setupServerRoutes() {
       json += (relayStates[i] == LOW ? "true" : "false");
       if (i < 3) json += ",";
     }
-    json += "],\"deviceId\":\"" + deviceId + "\",\"configured\":" + String(isConfigured ? "true" : "false") + "}";
+    json += "],\"deviceId\":\"" + deviceId + "\",\"configured\":" + String(isConfigured ? "true" : "false");
+    json += ",\"ipAddress\":\"" + WiFi.localIP().toString() + "\"}";
     server.send(200, "application/json", json);
   });
 
@@ -144,73 +140,9 @@ void setupServerRoutes() {
     server.send(200, "text/html", generateHTML());
   });
 
-  // API routes for backend control
-  server.on("/api/control", HTTP_POST, handleApiControl);
-  server.on("/api/status", HTTP_GET, handleApiStatus);
-
   server.onNotFound([]() {
     server.send(404, "text/plain", "Page not found");
   });
-}
-
-void handleApiControl() {
-  if (server.hasArg("plain")) {
-    String body = server.arg("plain");
-    DynamicJsonDocument doc(200);
-    DeserializationError error = deserializeJson(doc, body);
-    
-    if (!error) {
-      String targetApplianceId = doc["applianceId"].as<String>();
-      String stateStr = doc["state"].as<String>();
-      bool targetState = (stateStr == "on");
-      
-      bool success = false;
-      
-      // Find which relay corresponds to the appliance ID
-      for (int i = 0; i < 4; i++) {
-        if (targetApplianceId == applianceIds[i]) {
-          setRelayState(i, targetState ? LOW : HIGH); // LOW = ON for relay
-          success = true;
-          break;
-        }
-      }
-      
-      if (success) {
-        String responseJson = "{\"success\":true,\"applianceId\":\"" + targetApplianceId + "\",\"state\":\"" + stateStr + "\"}";
-        server.send(200, "application/json", responseJson);
-      } else {
-        server.send(404, "application/json", "{\"error\":\"Appliance not found\"}");
-      }
-    } else {
-      server.send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
-    }
-  } else {
-    server.send(400, "application/json", "{\"error\":\"No data provided\"}");
-  }
-}
-
-void handleApiStatus() {
-  DynamicJsonDocument statusDoc(512);
-  statusDoc["deviceId"] = deviceId;
-  statusDoc["isOnline"] = true;
-  statusDoc["ipAddress"] = WiFi.localIP().toString();
-  statusDoc["configured"] = isConfigured;
-  
-  JsonArray applianceStates = statusDoc.createNestedArray("applianceStates");
-  
-  for (int i = 0; i < 4; i++) {
-    JsonObject appliance = applianceStates.createNestedObject();
-    appliance["index"] = i;
-    appliance["name"] = applianceNames[i];
-    appliance["state"] = (relayStates[i] == LOW) ? "on" : "off";
-    if (applianceIds[i].length() > 0) {
-      appliance["id"] = applianceIds[i];
-    }
-  }
-  
-  String json;
-  serializeJson(statusDoc, json);
-  server.send(200, "application/json", json);
 }
 
 void setupWiFiDualMode() {
@@ -248,7 +180,7 @@ void setupWiFiDualMode() {
   }
 }
 
-void validateDevice() {
+void validateDeviceAndUpdateIP() {
   if (WiFi.status() != WL_CONNECTED) {
     Serial.println("Not connected to WiFi. Cannot validate device.");
     return;
@@ -262,7 +194,7 @@ void validateDevice() {
   String macAddress = WiFi.macAddress();
   String ipAddress = WiFi.localIP().toString();
   
-  Serial.println("=== DEVICE VALIDATION ===");
+  Serial.println("=== DEVICE VALIDATION & IP UPDATE ===");
   Serial.print("Device MAC Address: ");
   Serial.println(macAddress);
   Serial.print("Device IP Address: ");
@@ -289,41 +221,20 @@ void validateDevice() {
     Serial.println(response);
     Serial.println("=========================");
 
-    DynamicJsonDocument responseDoc(2048); // Increased buffer size
+    DynamicJsonDocument responseDoc(1024);
     DeserializationError error = deserializeJson(responseDoc, response);
 
     if (!error) {
-      // Print all fields in response for debugging
-      Serial.println("=== PARSING RESPONSE ===");
-      
+      // Check if device object exists in response
       if (responseDoc.containsKey("device")) {
         JsonObject device = responseDoc["device"];
         String newDeviceId = device["_id"].as<String>();
-        Serial.println("Found device ID: " + newDeviceId);
-        
-        if (device.containsKey("appliances") && device["appliances"].is<JsonArray>()) {
-          JsonArray appliances = device["appliances"].as<JsonArray>();
-          Serial.print("Found ");
-          Serial.print(appliances.size());
-          Serial.println(" appliances");
-          
-          for (int i = 0; i < appliances.size() && i < 4; i++) {
-            if (appliances[i].containsKey("_id")) {
-              applianceIds[i] = appliances[i]["_id"].as<String>();
-              Serial.print("Appliance ");
-              Serial.print(i);
-              Serial.print(" ID: ");
-              Serial.println(applianceIds[i]);
-            }
-          }
-        } else {
-          Serial.println("No appliances found in device object");
-        }
-        
-        // Check for WiFi credentials in device object
+        String newDeviceName = device["deviceName"] | device["name"] | "";
         String newSSID = device["ssid"] | "";
         String newPassword = device["password"] | "";
         
+        Serial.println("Found device ID: " + newDeviceId);
+        Serial.println("Found device name: " + newDeviceName);
         Serial.println("SSID from device: " + newSSID);
         Serial.println("Password length: " + String(newPassword.length()));
         
@@ -332,89 +243,72 @@ void validateDevice() {
           preferences.putBool("configured", true);
           preferences.putString("deviceId", newDeviceId);
           
-          // Save WiFi credentials if provided, otherwise keep current
+          if (newDeviceName.length() > 0) {
+            preferences.putString("deviceName", newDeviceName);
+            deviceName = newDeviceName;
+          }
+          
+          // Save WiFi credentials if provided
           if (newSSID.length() > 0 && newPassword.length() > 0) {
             preferences.putString("ssid", newSSID);
             preferences.putString("password", newPassword);
             configuredSSID = newSSID;
             configuredPassword = newPassword;
             Serial.println("Updated WiFi credentials");
+            
+            // Reconnect WiFi with new credentials
+            Serial.println("Reconnecting to new WiFi...");
+            setupWiFiDualMode();
+            delay(2000);
           } else {
             Serial.println("No new WiFi credentials, keeping current");
           }
-          
-          // Save appliance IDs
-          preferences.putString("appliance0", applianceIds[0]);
-          preferences.putString("appliance1", applianceIds[1]);
-          preferences.putString("appliance2", applianceIds[2]);
-          preferences.putString("appliance3", applianceIds[3]);
 
           Serial.println("✅ Device configuration saved successfully!");
           Serial.println("Device ID: " + newDeviceId);
+          Serial.println("Device Name: " + newDeviceName);
           
           // Update local variables
           deviceId = newDeviceId;
           isConfigured = true;
-
-          // Reconnect WiFi if credentials changed
-          if (newSSID.length() > 0 && newPassword.length() > 0) {
-            Serial.println("Reconnecting to new WiFi...");
-            setupWiFiDualMode();
-            delay(2000);
-          }
-          
-          // Send initial status update
-          sendStatusUpdate();
         } else {
           Serial.println("❌ Error: No device ID found in response");
         }
       } else {
         // Try alternative response format
         String newDeviceId = responseDoc["deviceId"] | responseDoc["_id"] | "";
+        String newDeviceName = responseDoc["deviceName"] | responseDoc["name"] | "";
         String newSSID = responseDoc["ssid"] | "";
         String newPassword = responseDoc["password"] | "";
         
         Serial.println("Alternative format - Device ID: " + newDeviceId);
+        Serial.println("Alternative format - Device Name: " + newDeviceName);
         Serial.println("Alternative format - SSID: " + newSSID);
-        
-        if (responseDoc.containsKey("appliances") && responseDoc["appliances"].is<JsonArray>()) {
-          JsonArray appliances = responseDoc["appliances"].as<JsonArray>();
-          Serial.print("Found ");
-          Serial.print(appliances.size());
-          Serial.println(" appliances in root");
-          
-          for (int i = 0; i < appliances.size() && i < 4; i++) {
-            if (appliances[i].containsKey("_id")) {
-              applianceIds[i] = appliances[i]["_id"].as<String>();
-              Serial.print("Appliance ");
-              Serial.print(i);
-              Serial.print(" ID: ");
-              Serial.println(applianceIds[i]);
-            }
-          }
-        }
         
         if (newDeviceId.length() > 0) {
           preferences.putBool("configured", true);
           preferences.putString("deviceId", newDeviceId);
+          
+          if (newDeviceName.length() > 0) {
+            preferences.putString("deviceName", newDeviceName);
+            deviceName = newDeviceName;
+          }
           
           if (newSSID.length() > 0 && newPassword.length() > 0) {
             preferences.putString("ssid", newSSID);
             preferences.putString("password", newPassword);
             configuredSSID = newSSID;
             configuredPassword = newPassword;
+            
+            Serial.println("Reconnecting to new WiFi...");
+            setupWiFiDualMode();
+            delay(2000);
           }
-          
-          preferences.putString("appliance0", applianceIds[0]);
-          preferences.putString("appliance1", applianceIds[1]);
-          preferences.putString("appliance2", applianceIds[2]);
-          preferences.putString("appliance3", applianceIds[3]);
           
           deviceId = newDeviceId;
           isConfigured = true;
           
           Serial.println("✅ Device configured with alternative format!");
-          sendStatusUpdate();
         }
       }
     } else {
@@ -438,100 +332,6 @@ void validateDevice() {
   http.end();
 }
 
-void sendStatusUpdate() {
-  if (!isConfigured || WiFi.status() != WL_CONNECTED) {
-    return;
-  }
-  
-  HTTPClient http;
-  String url = String(serverURL) + "/updatestatus/" + deviceId;
-  http.begin(url);
-  http.addHeader("Content-Type", "application/json");
-  http.setTimeout(10000);
-  
-  DynamicJsonDocument statusDoc(512);
-  statusDoc["deviceId"] = deviceId;
-  statusDoc["ipAddress"] = WiFi.localIP().toString();
-  statusDoc["isOnline"] = true;
-  
-  JsonArray applianceStates = statusDoc.createNestedArray("applianceStates");
-  
-  for (int i = 0; i < 4; i++) {
-    if (applianceIds[i].length() > 0) {
-      JsonObject appliance = applianceStates.createNestedObject();
-      appliance["id"] = applianceIds[i];
-      appliance["state"] = (relayStates[i] == LOW) ? "on" : "off";
-    }
-  }
-  
-  String json;
-  serializeJson(statusDoc, json);
-  
-  Serial.print("Sending status update to URL: ");
-  Serial.println(url);
-  Serial.print("Payload: ");
-  Serial.println(json);
-  
-  int httpResponseCode = http.POST(json);
-  Serial.print("Status update response code: ");
-  Serial.println(httpResponseCode);
-  
-  if (httpResponseCode == 200 || httpResponseCode == 201) {
-    Serial.println("Status update successful");
-  } else {
-    Serial.print("Status update failed with code: ");
-    Serial.println(httpResponseCode);
-    if (httpResponseCode > 0) {
-      String response = http.getString();
-      Serial.print("Error response: ");
-      Serial.println(response);
-    }
-  }
-  
-  http.end();
-}
-
-void updateApplianceState(String applianceId, bool state) {
-  if (!isConfigured || WiFi.status() != WL_CONNECTED) {
-    return;
-  }
-  
-  HTTPClient http;
-  String url = String(serverURL) + "/updateappliance";
-  http.begin(url);
-  http.addHeader("Content-Type", "application/json");
-  http.setTimeout(5000);
-  
-  DynamicJsonDocument requestDoc(200);
-  requestDoc["applianceId"] = applianceId;
-  requestDoc["state"] = state ? "on" : "off";
-  String json;
-  serializeJson(requestDoc, json);
-  
-  Serial.print("Sending appliance update to URL: ");
-  Serial.println(url);
-  Serial.print("Payload: ");
-  Serial.println(json);
-  
-  int httpResponseCode = http.POST(json);
-  Serial.print("Appliance update response code: ");
-  Serial.println(httpResponseCode);
-  
-  if (httpResponseCode == 200 || httpResponseCode == 201) {
-    Serial.println("Appliance state update successful");
-  } else {
-    Serial.print("Appliance state update failed with code: ");
-    Serial.println(httpResponseCode);
-    if (httpResponseCode > 0) {
-      String response = http.getString();
-      Serial.print("Error response: ");
-      Serial.println(response);
-    }
-  }
-  
-  http.end();
-}
-
 void setup() {
   Serial.begin(115200);
   delay(1000);
@@ -543,18 +343,16 @@ void setup() {
   // Load configuration
   isConfigured = preferences.getBool("configured", false);
   deviceId = preferences.getString("deviceId", "");
+  deviceName = preferences.getString("deviceName", "");
   
   if (isConfigured) {
     configuredSSID = preferences.getString("ssid", "");
     configuredPassword = preferences.getString("password", "");
     
-    // Load appliance IDs
-    applianceIds[0] = preferences.getString("appliance0", "");
-    applianceIds[1] = preferences.getString("appliance1", "");
-    applianceIds[2] = preferences.getString("appliance2", "");
-    applianceIds[3] = preferences.getString("appliance3", "");
-    
-    Serial.println("Device configured. Device ID: " + deviceId);
+    Serial.println("Device configured:");
+    Serial.println("- Device ID: " + deviceId);
+    Serial.println("- Device Name: " + deviceName);
+    Serial.println("- SSID: " + configuredSSID);
   } else {
     Serial.println("Device not configured. Using default WiFi credentials.");
   }
@@ -592,16 +390,10 @@ void loop() {
     delay(2000);
   }
   
-  // Backend validation (only if not configured)
-  if (!isConfigured && currentTime - lastValidationTime >= validationInterval) {
+  // Periodic device validation and IP updates
+  if (currentTime - lastValidationTime >= validationInterval) {
     lastValidationTime = currentTime;
-    validateDevice();
-  }
-
-  // Periodic status updates (only if configured)
-  if (isConfigured && currentTime - lastStatusUpdateTime >= statusUpdateInterval) {
-    lastStatusUpdateTime = currentTime;
-    sendStatusUpdate();
+    validateDeviceAndUpdateIP();
   }
 
   // Handle physical button presses with debouncing
