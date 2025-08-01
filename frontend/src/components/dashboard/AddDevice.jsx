@@ -31,13 +31,13 @@ const AddDevice = ({ onDeviceRegistered, roomId }) => {
         setPassword("");
         setMacAddress("");
 
-        toast.success(response.data.message);
+        toast.success(response.data.message || "Device registered successfully");
 
       }
 
     } catch (error) {
       console.error("Error registering device:", error);
-      toast.error(error.response.data.message);
+      toast.error(error.response.data.message || "Failed to register device");
 
     }
   };

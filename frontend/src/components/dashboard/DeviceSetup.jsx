@@ -17,6 +17,7 @@ const DeviceSetup = () => {
     const [status, setStatus] = useState('');
     const [deviceName, setDeviceName] = useState('');
     const [mac, setMac] = useState('');
+    const [ipAddress, setIpAddress] = useState('');
     const { roomId, deviceId } = useParams();
     // eslint-disable-next-line no-unused-vars
     const [loading, setLoading] = useState(false)
@@ -38,6 +39,7 @@ const DeviceSetup = () => {
                         setDeviceName(device.name);
                         setStatus(device.status);
                         setMac(device.macAddress);
+                        setIpAddress(device.ipAddress);
                     }
                 }
             } catch (err) {
@@ -131,7 +133,7 @@ const DeviceSetup = () => {
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
                 <div className="bg-white rounded-lg border shadow-sm">
                     <DeviceCard
-                        device={{ deviceName, status, mac }}
+                        device={{ deviceName, status, mac, ipAddress }}
                         deviceId={deviceId}
                     />
                 </div>

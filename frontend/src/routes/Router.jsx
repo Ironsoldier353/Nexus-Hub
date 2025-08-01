@@ -16,7 +16,6 @@ import DashboardDeviceSetup from '../components/dashboard/DashBoardDeviceSetup';
 import DeviceSetup from '@/components/dashboard/DeviceSetup';
 import AdminUserDetails from '@/components/admin/adminUserDetails';
 import QuickGuide from '../components/QuickGuide';
-import AddMacAddress from '@/components/admin/StoreMacAddress';
 import RegisterAdminGuide from '@/components/quick-guide/RegisterAdminGuide';
 import RegisterMemberGuide from '@/components/quick-guide/RegisterMemberGuide';
 import InviteMemberGuide from '@/components/quick-guide/InviteMemberGuide';
@@ -98,10 +97,6 @@ const browserRouter = createBrowserRouter([
   {
     path: "/admin/:userId",
     element: <ProtectedRoute1><AdminUserDetails /></ProtectedRoute1>
-  },
-  {
-    path: "/admin/:roomId/store/mac-addresses",
-    element: <ProtectedRoute1><AddMacAddress /></ProtectedRoute1>
   }
   
 ]);

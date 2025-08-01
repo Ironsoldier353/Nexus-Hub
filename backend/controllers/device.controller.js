@@ -86,6 +86,12 @@ export const validateDevices = async (req, res) => {
             });
         }
 
+        // If device is already active and IP has changed → update IP
+        if (device.status === "active" && device.ipAddress && device.ipAddress !== ipAddress) {
+            device.ipAddress = ipAddress;
+            await device.save();
+        }
+
         // If first time validation → set status = active
         if (device.status === "pending") {
             device.status = "active";
@@ -94,7 +100,6 @@ export const validateDevices = async (req, res) => {
 
             await device.save();
         }
-
 
         const responseObj = {
             ssid: device.ssid,
@@ -114,6 +119,7 @@ export const validateDevices = async (req, res) => {
 
 
 
+
 export const getAllDevices = async (req, res) => {
     try {
         const { roomId } = req.params; // Get roomId from URL parameters
@@ -121,6 +127,8 @@ export const getAllDevices = async (req, res) => {
         const devices = await Device.find({ room: roomId }) // Filter by room
             .populate('room')
             .select('-password'); // Don't send WiFi passwords
+
+        console.log("Devices fetched:", devices);
 
         return res.status(200).json({
             success: true,
