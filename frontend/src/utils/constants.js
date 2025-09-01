@@ -25,4 +25,3 @@ export const GET_DEVICE_BY_ID_API = `${BASE_URL}/api/v1/devices`;
 export const UPDATE_DEVICE_API = `${BASE_URL}/api/v1/devices`;
 export const GET_DEVICE_IP_API = `${BASE_URL}/api/v1/devices/deviceIp`;
 export const DEVICE_UPDATE = `${BASE_URL}/api/v1/devices/update`;
-

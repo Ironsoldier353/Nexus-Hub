@@ -75,7 +75,7 @@ const browserRouter = createBrowserRouter([
     element: <LoginMember />
   },
   {
-    path: `/member/dashboard`,
+    path: `/member/dashboard/:roomId`,
     element: <DashboardMember />
   },
   {
