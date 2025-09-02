@@ -38,9 +38,10 @@ const LoginMember = () => {
 
       if (user.room) {
         setTimeout(() => {
-          navigate(`/member/dashboard`);
+          navigate(`/member/dashboard/${user.room}`);
         }, 1500);
-      } else {
+      }
+      else {
         setMessage("No room associated with this account. Please contact the admin.");
       }
     } catch (error) {
@@ -140,9 +141,8 @@ const LoginMember = () => {
 
           {message && (
             <div
-              className={`mt-4 text-sm font-medium ${
-                message.includes("successful") ? "text-green-500" : "text-red-500"
-              }`}
+              className={`mt-4 text-sm font-medium ${message.includes("successful") ? "text-green-500" : "text-red-500"
+                }`}
             >
               {message}
             </div>
