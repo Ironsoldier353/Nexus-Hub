@@ -14,7 +14,7 @@ const app = express();
 
 app.use(express.json());
 app.use(cors({
-    origin: 'http://localhost:5173',
+    origin: 'https://nexus-hub-lilac.vercel.app',
     credentials: true,
     optionSuccessStatus: 200
 }));
