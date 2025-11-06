@@ -138,6 +138,105 @@ export const generateRecipe = async (req, res) => {
   }
 };
 
+export const generateRecipeFromVoice = async (req, res) => {
+  try {
+    const { roomId } = req.params;
+    const { voiceInput } = req.body;
+
+    if (!voiceInput || voiceInput.trim() === '') {
+      return res.status(400).json({ success: false, error: 'Voice input is required' });
+    }
+
+    // ✅ Verify room exists
+    const room = await Room.findById(roomId);
+    if (!room) {
+      return res.status(404).json({ success: false, error: 'Room not found' });
+    }
+
+    // ✅ Create prompt based on voice input
+    const prompt = `
+You are a professional chef. Based on the following voice description, generate a detailed and valid JSON recipe:
+
+Voice Description:
+"${voiceInput}"
+
+Provide ONLY a valid JSON object in this format:
+{
+  "name": "Recipe name",
+  "description": "Brief description",
+  "cuisine": "Cuisine type",
+  "difficulty": "easy | medium | hard",
+  "prepTime": number (in minutes),
+  "cookTime": number (in minutes),
+  "totalTime": number (in minutes),
+  "servings": number,
+  "calories": number,
+  "ingredients": [
+    {"item": "ingredient name", "quantity": "amount", "unit": "measurement"}
+  ],
+  "instructions": [
+    {"step": 1, "description": "detailed instruction"}
+  ],
+  "tags": ["tag1", "tag2"],
+  "isRegional": boolean,
+  "region": "region name or empty string",
+  "dietaryInfo": {
+    "isVegetarian": boolean,
+    "isVegan": boolean,
+    "isGlutenFree": boolean,
+    "isDairyFree": boolean
+  },
+  "nutritionInfo": {
+    "protein": number (grams),
+    "carbs": number (grams),
+    "fat": number (grams),
+    "fiber": number (grams)
+  }
+}
+
+Ensure it is valid JSON and contains realistic values.
+`;
+
+    // ✅ Generate with Gemini
+    const model = genAI.getGenerativeModel({ model: MODEL_1 });
+    const result = await model.generateContent(prompt);
+    const response = await result.response;
+    let text = response.text();
+
+    // ✅ Clean and parse JSON
+    text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    const recipeJson = JSON.parse(text);
+
+    // ✅ Save to DB
+    const newRecipe = new Recipe({
+      ...recipeJson,
+      room: roomId,
+      createdBy: req.user?.id || room.admin,
+    });
+
+    await newRecipe.save();
+
+    // ✅ Add to room
+    room.recipes.push(newRecipe._id);
+    await room.save();
+
+    res.status(201).json({
+      success: true,
+      message: 'Recipe generated from voice successfully',
+      recipe: newRecipe
+    });
+
+  } catch (error) {
+    console.error('Error generating recipe from voice:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate recipe from voice',
+      details: error.message
+    });
+  }
+};
+
+
 // Get all recipes for a room
 export const getRoomRecipes = async (req, res) => {
   try {
