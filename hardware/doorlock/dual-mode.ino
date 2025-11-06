@@ -4,28 +4,29 @@
 #include <ArduinoJson.h>
 #include <Preferences.h>
 
-// Home WiFi credentials (used for first upload)
+// Home WiFi credentials used for uploading code in esp32- can be updated from backend based on user data
 const char* default_home_ssid = "Primary";
 const char* default_home_password = "combat3d";
 
-// Access Point credentials for ap mode
-const char* ap_ssid = "DoorLock_Controller";
+// Access Point credentials - can be predefined or set by user .. initially plan is to just keep it as predefined 
+const char* ap_ssid = "Appliance_Controller";
 const char* ap_password = "nexus_hub";
 
 // Backend server URL
 const char* serverURL = "https://nexus-hub-vvqm.onrender.com/api/v1/devices";
 
-// Static IP for AP mode
+// Static IP for AP mode - where the AP serves
 IPAddress local_IP(192, 168, 4, 1);
 IPAddress gateway(192, 168, 4, 1);
 IPAddress subnet(255, 255, 255, 0);
 
-// Single relay & button pins
-const int relayPin = 5;    // relay
-const int buttonPin = 13;  // switch
+// GPIO pins for relay and button   
+const int relayPin = 18;
+const int buttonPin = 13;
 const String applianceName = "Door Lock";
 
-bool relayState = HIGH;     // HIGH = OFF (relay inactive)
+// Relay state and button handling
+bool relayState = HIGH; // HIGH = LOCKED for door lock
 bool lastButtonState = HIGH;
 bool stableButtonState = HIGH;
 unsigned long lastStateChangeTime = 0;
@@ -34,7 +35,7 @@ unsigned long lastToggleTime = 0;
 const unsigned long debounceTime = 50;
 const unsigned long minToggleInterval = 300;
 
-// Backend-related variables
+// Backend integration variables
 bool isConfigured = false;
 String configuredSSID = "";
 String configuredPassword = "";
@@ -42,11 +43,12 @@ String deviceId = "";
 String deviceName = "";
 
 // Polling intervals
-const unsigned long validationInterval = 60000;
+const unsigned long validationInterval = 60000; // 60 seconds for IP updates
 unsigned long lastValidationTime = 0;
 
-// Preferences
+// Preferences for storing configuration
 Preferences preferences;
+
 WebServer server(80);
 
 void setRelayState(bool state) {
@@ -60,18 +62,16 @@ void toggleRelay() {
 }
 
 String generateHTML() {
-  bool isOn = (relayState == LOW);
-  String html = "<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\">";
-  html += "<meta charset=\"UTF-8\"><title>Nexus Hub Door Lock</title><style>";
-  html += "*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#6a11cb,#2575fc);min-height:100vh;padding:20px}";
-  html += ".container{max-width:450px;margin:auto;background:white;border-radius:15px;box-shadow:0 10px 25px rgba(0,0,0,0.3);overflow:hidden}";
+  String html = "<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">";
+  html += "<meta charset=\"UTF-8\"><title>Nexus Hub Door Lock Control</title><style>";
+  html += "*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',sans-serif;background:linear-gradient(135deg,#667eea,#764ba2);min-height:100vh;padding:20px}";
+  html += ".container{max-width:500px;margin:auto;background:white;border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,0.3);overflow:hidden}";
   html += ".header{background:linear-gradient(45deg,#2196F3,#21CBF3);color:white;padding:30px 20px;text-align:center}";
   html += "h1{font-size:24px;margin-bottom:5px}.subtitle{opacity:0.9;font-size:14px}.content{padding:30px 20px}";
   html += ".appliance-card{background:#f8f9fa;border-radius:10px;padding:20px;margin-bottom:15px;box-shadow:0 2px 10px rgba(0,0,0,0.1)}";
-  html += ".appliance-name{font-weight:bold;font-size:18px;color:#333;margin-bottom:10px}";
-  html += ".status{display:inline-block;padding:6px 14px;border-radius:20px;font-size:13px;font-weight:bold;margin-bottom:15px}";
+  html += ".appliance-name{font-weight:bold;font-size:16px;color:#333;margin-bottom:10px}.status{display:inline-block;padding:5px 12px;border-radius:20px;font-size:12px;font-weight:bold;margin-bottom:15px}";
   html += ".status.on{background:#4CAF50;color:white}.status.off{background:#f44336;color:white}";
-  html += ".toggle-btn{width:100%;padding:14px;font-size:16px;border:none;border-radius:8px;cursor:pointer;transition:0.3s;font-weight:bold}";
+  html += ".toggle-btn{width:100%;padding:12px;font-size:16px;border:none;border-radius:8px;cursor:pointer;transition:0.3s;font-weight:bold}";
   html += ".toggle-btn.on{background:#f44336;color:white}.toggle-btn.on:hover{background:#d32f2f}";
   html += ".toggle-btn.off{background:#4CAF50;color:white}.toggle-btn.off:hover{background:#388E3C}";
   html += ".refresh-btn{background:#2196F3;color:white;padding:12px 30px;border:none;border-radius:25px;font-size:16px;cursor:pointer;margin:20px auto;display:block;transition:0.3s}";
@@ -80,23 +80,32 @@ String generateHTML() {
   html += ".control-info{background:#f3e5f5;color:#7b1fa2;padding:8px;text-align:center;font-size:11px}";
   html += ".backend-status{background:" + String(isConfigured ? "#e8f5e8" : "#fff3e0") + ";color:" + String(isConfigured ? "#2e7d32" : "#f57c00") + ";padding:8px;text-align:center;font-size:11px}";
   html += "</style><script>function manualRefresh(){location.reload();}</script></head><body>";
-  html += "<div class=\"container\"><div class=\"header\"><h1>🔒 Nexus Hub</h1><div class=\"subtitle\">Smart Door Lock Controller</div></div>";
+  html += "<div class=\"container\"><div class=\"header\"><h1>🏠 Welcome to Nexus Hub</h1><div class=\"subtitle\">Door Lock Controller</div></div>";
   
+  // Network information
   html += "<div class=\"ip-info\">📶 STA IP: " + WiFi.localIP().toString() + "<br>📡 AP IP: " + WiFi.softAPIP().toString() + "<br>Network: " + String(ap_ssid) + "</div>";
-  html += "<div class=\"control-info\">Dual Mode (WiFi + AP) | Local Control</div>";
+  html += "<div class=\"control-info\">Simultaneous WiFi Client & Access Point | Local Control</div>";
   
+  // Backend status
   String statusText = isConfigured ? "🌐 Connected to Backend" : "⚠️ Waiting for Backend Configuration";
-  if (isConfigured && deviceName.length() > 0) statusText += " | Device: " + deviceName;
+  if (isConfigured && deviceName.length() > 0) {
+    statusText += " | Device: " + deviceName;
+  } else if (isConfigured && deviceId.length() > 0) {
+    statusText += " | ID: " + deviceId.substring(deviceId.length()-6);
+  }
   html += "<div class=\"backend-status\">" + statusText + "</div>";
   
   html += "<div class=\"content\">";
-  html += "<div class=\"appliance-card\"><div class=\"appliance-name\">" + applianceName + "</div>";
-  html += "<span class=\"status " + String(isOn ? "on" : "off") + "\">" + (isOn ? "UNLOCKED" : "LOCKED") + "</span>";
-  html += "<form action=\"/toggle_relay\" method=\"GET\" style=\"margin:0\">";
-  html += "<button class=\"toggle-btn " + String(isOn ? "on" : "off") + "\" type=\"submit\">";
-  html += (isOn ? "🔴 Lock Door" : "🟢 Unlock Door") + String("</button></form></div>");
+
+  bool isUnlocked = (relayState == LOW);
+  html += "<div class=\"appliance-card\"><div class=\"appliance-name\">🔒 " + applianceName + "</div>";
+  html += "<span class=\"status " + String(isUnlocked ? "on" : "off") + "\">" + (isUnlocked ? "UNLOCKED" : "LOCKED") + "</span>";
+  html += "<form action=\"/toggle\" method=\"GET\" style=\"margin:0\">";
+  html += "<button class=\"toggle-btn " + String(isUnlocked ? "on" : "off") + "\" type=\"submit\">";
+  html += (isUnlocked ? "🔴 Lock Door" : "🟢 Unlock Door") + String("</button></form></div>");
+
   html += "<form action=\"/refresh\" method=\"GET\"><button class=\"refresh-btn\" type=\"submit\" onclick=\"manualRefresh()\">🔄 Refresh Status</button></form>";
-  html += "</div><div class=\"footer\">Nexus Crew | ESP32 Door Lock<br>Mode: Dual STA + AP</div></div></body></html>";
+  html += "</div><div class=\"footer\">Nexus Crew | ESP32 Controller<br>Mode: Dual STA + AP | Local Control</div></div></body></html>";
   return html;
 }
 
@@ -105,13 +114,13 @@ void setupServerRoutes() {
     server.send(200, "text/html", generateHTML());
   });
 
-  server.on("/toggle_relay", HTTP_GET, []() {
+  server.on("/toggle", HTTP_GET, []() {
     toggleRelay();
     server.send(200, "text/html", generateHTML());
   });
 
   server.on("/status", HTTP_GET, []() {
-    String json = "{\"doorLock\":" + String(relayState == LOW ? "true" : "false");
+    String json = "{\"relayState\":" + String(relayState == LOW ? "true" : "false");
     json += ",\"deviceId\":\"" + deviceId + "\",\"configured\":" + String(isConfigured ? "true" : "false");
     json += ",\"ipAddress\":\"" + WiFi.localIP().toString() + "\"}";
     server.send(200, "application/json", json);
@@ -128,12 +137,15 @@ void setupServerRoutes() {
 
 void setupWiFiDualMode() {
   WiFi.mode(WIFI_AP_STA);
+  
+  // Try to connect to home WiFi (STA mode)
   const char* sta_ssid = isConfigured ? configuredSSID.c_str() : default_home_ssid;
   const char* sta_password = isConfigured ? configuredPassword.c_str() : default_home_password;
+  
   WiFi.begin(sta_ssid, sta_password);
-
   Serial.print("Connecting to WiFi: ");
   Serial.println(sta_ssid);
+
   int attempts = 0;
   while (WiFi.status() != WL_CONNECTED && attempts < 15) {
     delay(1000);
@@ -142,71 +154,169 @@ void setupWiFiDualMode() {
   }
 
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("\n Connected to WiFi");
+    Serial.println("\n✅ Connected to Home WiFi");
     Serial.println("STA IP: " + WiFi.localIP().toString());
   } else {
-    Serial.println("\n WiFi connection failed");
+    Serial.println("\n❌ Failed to connect to Home WiFi");
   }
 
+  // Setup Access Point mode
   WiFi.softAPConfig(local_IP, gateway, subnet);
   if (WiFi.softAP(ap_ssid, ap_password)) {
-    Serial.println(" AP Mode Active: " + WiFi.softAPIP().toString());
+    Serial.println("✅ AP Mode Enabled");
+    Serial.println("AP IP: " + WiFi.softAPIP().toString());
   } else {
-    Serial.println(" AP Mode Failed");
+    Serial.println("❌ Failed to start AP mode");
   }
 }
 
-// Backend Validation 
 void validateDeviceAndUpdateIP() {
   if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("WiFi not connected. Skipping validation.");
+    Serial.println("Not connected to WiFi. Cannot validate device.");
     return;
   }
-
+  
   HTTPClient http;
   http.begin(String(serverURL) + "/validatedevice");
   http.addHeader("Content-Type", "application/json");
+  http.setTimeout(10000); // 10 second timeout
 
-  String mac = WiFi.macAddress();
-  String ip = WiFi.localIP().toString();
+  String macAddress = WiFi.macAddress();
+  String ipAddress = WiFi.localIP().toString();
+  
+  Serial.println("=== DEVICE VALIDATION & IP UPDATE ===");
+  Serial.print("Device MAC Address: ");
+  Serial.println(macAddress);
+  Serial.print("Device IP Address: ");
+  Serial.println(ipAddress);
 
-  DynamicJsonDocument doc(300);
-  doc["macAddress"] = mac;
-  doc["ipAddress"] = ip;
-  String payload;
-  serializeJson(doc, payload);
+  DynamicJsonDocument requestDoc(300);
+  requestDoc["macAddress"] = macAddress;
+  requestDoc["ipAddress"] = ipAddress;
+  String json;
+  serializeJson(requestDoc, json);
 
-  Serial.println("Sending validation request...");
-  int code = http.POST(payload);
-  Serial.println("Response Code: " + String(code));
+  Serial.print("Sending validation request to: ");
+  Serial.println(String(serverURL) + "/validatedevice");
+  Serial.print("Payload: ");
+  Serial.println(json);
 
-  if (code == 200) {
-    String res = http.getString();
-    DynamicJsonDocument resDoc(1024);
-    if (!deserializeJson(resDoc, res)) {
-      String newDeviceId = resDoc["device"]["_id"] | resDoc["_id"] | "";
-      String newDeviceName = resDoc["device"]["deviceName"] | resDoc["deviceName"] | "";
-      String newSSID = resDoc["device"]["ssid"] | "";
-      String newPass = resDoc["device"]["password"] | "";
+  int httpResponseCode = http.POST(json);
+  Serial.print("Validation response code: ");
+  Serial.println(httpResponseCode);
 
-      if (newDeviceId.length()) {
-        preferences.putBool("configured", true);
-        preferences.putString("deviceId", newDeviceId);
-        preferences.putString("deviceName", newDeviceName);
-        if (newSSID.length()) {
-          preferences.putString("ssid", newSSID);
-          preferences.putString("password", newPass);
+  if (httpResponseCode == 200) {
+    String response = http.getString();
+    Serial.println("=== VALIDATION RESPONSE ===");
+    Serial.println(response);
+    Serial.println("=========================");
+
+    DynamicJsonDocument responseDoc(1024);
+    DeserializationError error = deserializeJson(responseDoc, response);
+
+    if (!error) {
+      // Check if device object exists in response
+      if (responseDoc.containsKey("device")) {
+        JsonObject device = responseDoc["device"];
+        String newDeviceId = device["_id"].as<String>();
+        String newDeviceName = device["deviceName"] | device["name"] | "";
+        String newSSID = device["ssid"] | "";
+        String newPassword = device["password"] | "";
+        
+        Serial.println("Found device ID: " + newDeviceId);
+        Serial.println("Found device name: " + newDeviceName);
+        Serial.println("SSID from device: " + newSSID);
+        Serial.println("Password length: " + String(newPassword.length()));
+        
+        if (newDeviceId.length() > 0) {
+          // Save configuration
+          preferences.putBool("configured", true);
+          preferences.putString("deviceId", newDeviceId);
+          
+          if (newDeviceName.length() > 0) {
+            preferences.putString("deviceName", newDeviceName);
+            deviceName = newDeviceName;
+          }
+          
+          // Save WiFi credentials if provided
+          if (newSSID.length() > 0 && newPassword.length() > 0) {
+            preferences.putString("ssid", newSSID);
+            preferences.putString("password", newPassword);
+            configuredSSID = newSSID;
+            configuredPassword = newPassword;
+            Serial.println("Updated WiFi credentials");
+            
+            // Reconnect WiFi with new credentials
+            Serial.println("Reconnecting to new WiFi...");
+            setupWiFiDualMode();
+            delay(2000);
+          } else {
+            Serial.println("No new WiFi credentials, keeping current");
+          }
+
+          Serial.println("✅ Device configuration saved successfully!");
+          Serial.println("Device ID: " + newDeviceId);
+          Serial.println("Device Name: " + newDeviceName);
+          
+          // Update local variables
+          deviceId = newDeviceId;
+          isConfigured = true;
+        } else {
+          Serial.println("❌ Error: No device ID found in response");
         }
-        deviceId = newDeviceId;
-        deviceName = newDeviceName;
-        configuredSSID = newSSID;
-        configuredPassword = newPass;
-        isConfigured = true;
-        Serial.println("✅ Device validated and configuration saved");
+      } else {
+        // Try alternative response format
+        String newDeviceId = responseDoc["deviceId"] | responseDoc["_id"] | "";
+        String newDeviceName = responseDoc["deviceName"] | responseDoc["name"] | "";
+        String newSSID = responseDoc["ssid"] | "";
+        String newPassword = responseDoc["password"] | "";
+        
+        Serial.println("Alternative format - Device ID: " + newDeviceId);
+        Serial.println("Alternative format - Device Name: " + newDeviceName);
+        Serial.println("Alternative format - SSID: " + newSSID);
+        
+        if (newDeviceId.length() > 0) {
+          preferences.putBool("configured", true);
+          preferences.putString("deviceId", newDeviceId);
+          
+          if (newDeviceName.length() > 0) {
+            preferences.putString("deviceName", newDeviceName);
+            deviceName = newDeviceName;
+          }
+          
+          if (newSSID.length() > 0 && newPassword.length() > 0) {
+            preferences.putString("ssid", newSSID);
+            preferences.putString("password", newPassword);
+            configuredSSID = newSSID;
+            configuredPassword = newPassword;
+            
+            Serial.println("Reconnecting to new WiFi...");
+            setupWiFiDualMode();
+            delay(2000);
+          }
+          
+          deviceId = newDeviceId;
+          isConfigured = true;
+          
+          Serial.println("✅ Device configured with alternative format!");
+        }
       }
+    } else {
+      Serial.print("❌ JSON parsing error: ");
+      Serial.println(error.c_str());
     }
+  } else if (httpResponseCode == 400) {
+    String response = http.getString();
+    Serial.println("❌ Validation failed (400): " + response);
+  } else if (httpResponseCode == 404) {
+    String response = http.getString();
+    Serial.println("⚠️ Device not found (404): " + response);
+    Serial.println("💡 MAC Address: " + macAddress);
+    Serial.println("💡 Please register this device in your web application!");
   } else {
-    Serial.println("Validation failed: " + http.getString());
+    String response = http.getString();
+    Serial.printf("❌ Validation error: HTTP response code %d\n", httpResponseCode);
+    Serial.println("Response: " + response);
   }
 
   http.end();
@@ -215,52 +325,77 @@ void validateDeviceAndUpdateIP() {
 void setup() {
   Serial.begin(115200);
   delay(1000);
-  Serial.println("🚪 ESP32 Door Lock Controller Starting...");
+  Serial.println("\nESP32 Door Lock Controller - Dual Mode with Backend Integration");
 
+  // Initialize preferences
   preferences.begin("doorlock-config", false);
+
+  // Load configuration
   isConfigured = preferences.getBool("configured", false);
   deviceId = preferences.getString("deviceId", "");
   deviceName = preferences.getString("deviceName", "");
-  configuredSSID = preferences.getString("ssid", "");
-  configuredPassword = preferences.getString("password", "");
+  
+  if (isConfigured) {
+    configuredSSID = preferences.getString("ssid", "");
+    configuredPassword = preferences.getString("password", "");
+    
+    Serial.println("Device configured:");
+    Serial.println("- Device ID: " + deviceId);
+    Serial.println("- Device Name: " + deviceName);
+    Serial.println("- SSID: " + configuredSSID);
+  } else {
+    Serial.println("Device not configured. Using default WiFi credentials.");
+  }
 
+  // Initialize GPIO pins
   pinMode(relayPin, OUTPUT);
-  digitalWrite(relayPin, HIGH); // Locked initially
+  digitalWrite(relayPin, HIGH); // Initialize to LOCKED
   pinMode(buttonPin, INPUT_PULLUP);
+  lastButtonState = digitalRead(buttonPin);
+  stableButtonState = lastButtonState;
 
+  // Setup dual WiFi mode
   setupWiFiDualMode();
+  
+  // Setup web server
   setupServerRoutes();
   server.begin();
-  Serial.println("🌐 Web server running at:");
-  Serial.println("STA: http://" + WiFi.localIP().toString());
-  Serial.println("AP : http://" + WiFi.softAPIP().toString());
+  Serial.println("🌐 Web server running on both STA and AP mode!");
+  Serial.println("Local Access: http://" + WiFi.localIP().toString());
+  Serial.println("AP Access: http://" + WiFi.softAPIP().toString());
 }
 
 void loop() {
+  unsigned long currentTime = millis();
+  
+  // Handle web server requests
   server.handleClient();
-
-  unsigned long now = millis();
-  if (WiFi.status() != WL_CONNECTED && now % 10000 < 50) {
+  
+  // Ensure WiFi STA connection is maintained
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi STA connection lost. Attempting to reconnect...");
     setupWiFiDualMode();
+    delay(2000);
   }
-
-  if (now - lastValidationTime >= validationInterval) {
-    lastValidationTime = now;
+  
+  // Periodic device validation and IP updates
+  if (currentTime - lastValidationTime >= validationInterval) {
+    lastValidationTime = currentTime;
     validateDeviceAndUpdateIP();
   }
 
-  // Button debounce
+  // Handle physical button press with debouncing
   int reading = digitalRead(buttonPin);
   if (reading != lastButtonState) {
-    lastStateChangeTime = now;
+    lastStateChangeTime = millis();
     lastButtonState = reading;
   }
-  if ((now - lastStateChangeTime) > debounceTime) {
+  if ((millis() - lastStateChangeTime) > debounceTime) {
     if (reading != stableButtonState) {
       stableButtonState = reading;
-      if (reading == LOW && (now - lastToggleTime > minToggleInterval)) {
+      if (reading == LOW && (millis() - lastToggleTime > minToggleInterval)) {
         toggleRelay();
-        lastToggleTime = now;
+        lastToggleTime = millis();
       }
     }
   }
