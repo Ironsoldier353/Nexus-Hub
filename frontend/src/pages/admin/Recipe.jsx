@@ -33,7 +33,7 @@ export default function RecipePage() {
   const fetchRecipes = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/recipes/room/${roomId}`);
+      const response = await fetch(`https://nexus-hub-vvqm.onrender.com/api/v1/recipes/room/${roomId}`);
       const data = await response.json();
       if (data.success) {
         setRecipes(data.recipes);
@@ -58,7 +58,7 @@ export default function RecipePage() {
     };
 
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/recipes/room/${roomId}/generate`, {
+      const response = await fetch(`https://nexus-hub-vvqm.onrender.com/api/v1/recipes/room/${roomId}/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -93,7 +93,7 @@ export default function RecipePage() {
     if (!window.confirm('Delete this recipe?')) return;
     
     try {
-      const response = await fetch(`http://localhost:8000/api/v1/recipes/${recipeId}`, {
+      const response = await fetch(`https://nexus-hub-vvqm.onrender.com/api/v1/recipes/${recipeId}`, {
         method: 'DELETE'
       });
       const data = await response.json();
