@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChefHat, Clock, Users, Flame, Trash2, Plus, Loader2, ArrowLeft, Sparkles } from 'lucide-react';
+import { ChefHat, Clock, Users, Flame, Trash2, Plus, Loader2, ArrowLeft, Sparkles, Mic, MicOff } from 'lucide-react';
 
 export default function RecipePage() {
   const { roomId } = useParams();
@@ -11,6 +11,9 @@ export default function RecipePage() {
   const [generating, setGenerating] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [selectedRecipe, setSelectedRecipe] = useState(null);
+  const [isListening, setIsListening] = useState(false);
+  const [voiceText, setVoiceText] = useState('');
+  const [showVoiceInput, setShowVoiceInput] = useState(false);
   
   const [formData, setFormData] = useState({
     calories: '',
@@ -106,6 +109,101 @@ export default function RecipePage() {
     }
   };
 
+  const startVoiceRecognition = () => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      alert('Speech recognition is not supported in your browser. Please use Chrome or Edge.');
+      return;
+    }
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      setVoiceText('Listening... 🎤');
+    };
+
+    recognition.onresult = async (event) => {
+      const transcript = event.results[0][0].transcript;
+      setVoiceText(transcript);
+      setIsListening(false);
+      
+      // Send to voice API
+      await generateFromVoice(transcript);
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+      
+      let errorMessage = 'Could not recognize speech. ';
+      
+      switch(event.error) {
+        case 'network':
+          errorMessage += 'Please check your internet connection and try again.';
+          break;
+        case 'not-allowed':
+        case 'service-not-allowed':
+          errorMessage += 'Microphone access denied. Please allow microphone permissions in your browser settings.';
+          break;
+        case 'no-speech':
+          errorMessage += 'No speech detected. Please try speaking again.';
+          break;
+        case 'aborted':
+          errorMessage += 'Speech recognition was aborted.';
+          break;
+        case 'audio-capture':
+          errorMessage += 'No microphone was found. Please connect a microphone.';
+          break;
+        default:
+          errorMessage += 'Please try again.';
+      }
+      
+      setVoiceText(errorMessage);
+      alert(errorMessage);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    try {
+      recognition.start();
+    } catch (error) {
+      console.error('Failed to start recognition:', error);
+      setVoiceText('Failed to start microphone. Please try again.');
+      alert('Failed to start microphone. Please make sure you have granted microphone permissions.');
+    }
+  };
+
+  const generateFromVoice = async (text) => {
+    setGenerating(true);
+    
+    try {
+      const response = await fetch(`https://nexus-hub-vvqm.onrender.com/api/v1/recipes/room/${roomId}/generate-from-voice`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ voiceInput: text })
+      });
+
+      const data = await response.json();
+      if (data.success) {
+        setRecipes([data.recipe, ...recipes]);
+        setShowVoiceInput(false);
+        setVoiceText('');
+      }
+    } catch (error) {
+      console.error('Error generating recipe from voice:', error);
+      alert('Failed to generate recipe. Please try again.');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-amber-50 to-yellow-50">
       {/* Header */}
@@ -132,6 +230,13 @@ export default function RecipePage() {
                 <span className="hidden sm:inline">Dashboard</span>
               </button>
               <button
+                onClick={() => setShowVoiceInput(!showVoiceInput)}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg hover:from-purple-600 hover:to-pink-700 transition shadow-lg"
+              >
+                <Mic className="w-5 h-5" />
+                <span className="hidden sm:inline">Voice</span>
+              </button>
+              <button
                 onClick={() => setShowForm(!showForm)}
                 className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-amber-600 text-white rounded-lg hover:from-orange-600 hover:to-amber-700 transition shadow-lg"
               >
@@ -145,6 +250,80 @@ export default function RecipePage() {
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+        {showVoiceInput && (
+          <div className="bg-gradient-to-br from-purple-50 to-pink-50 backdrop-blur rounded-2xl shadow-xl p-4 sm:p-6 mb-6 sm:mb-8 border border-purple-200">
+            <div className="flex items-center gap-2 mb-4 sm:mb-6">
+              <Mic className="w-5 h-5 text-purple-600" />
+              <h2 className="text-xl sm:text-2xl font-semibold text-gray-800">Voice Recipe Generation</h2>
+            </div>
+            
+            <div className="text-center py-8">
+              <div className="mb-6">
+                <button
+                  onClick={startVoiceRecognition}
+                  disabled={isListening || generating}
+                  className={`mx-auto w-24 h-24 rounded-full flex items-center justify-center transition-all shadow-2xl ${
+                    isListening 
+                      ? 'bg-gradient-to-br from-red-500 to-pink-600 animate-pulse' 
+                      : 'bg-gradient-to-br from-purple-500 to-pink-600 hover:scale-110'
+                  } ${generating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  {isListening ? (
+                    <MicOff className="w-12 h-12 text-white" />
+                  ) : (
+                    <Mic className="w-12 h-12 text-white" />
+                  )}
+                </button>
+              </div>
+              
+              <p className="text-gray-700 mb-4 font-medium">
+                {isListening ? '🎤 Listening... Speak now!' : 'Click the microphone to start'}
+              </p>
+              
+              {voiceText && !isListening && (
+                <div className={`rounded-xl p-4 shadow-md border max-w-2xl mx-auto ${
+                  voiceText.includes('Error') || voiceText.includes('Could not') || voiceText.includes('Failed')
+                    ? 'bg-red-50 border-red-200'
+                    : 'bg-white border-purple-200'
+                }`}>
+                  <p className="text-sm text-gray-500 mb-2">
+                    {voiceText.includes('Error') || voiceText.includes('Could not') || voiceText.includes('Failed')
+                      ? '⚠️ Error:'
+                      : 'You said:'}
+                  </p>
+                  <p className={`text-lg ${
+                    voiceText.includes('Error') || voiceText.includes('Could not') || voiceText.includes('Failed')
+                      ? 'text-red-700'
+                      : 'text-gray-800'
+                  }`}>{voiceText}</p>
+                </div>
+              )}
+              
+              {generating && (
+                <div className="mt-6 flex items-center justify-center gap-2 text-purple-600">
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                  <span className="font-medium">Generating your recipe...</span>
+                </div>
+              )}
+              
+              <div className="mt-6 text-sm text-gray-600 max-w-2xl mx-auto">
+                <p className="mb-2">💡 Try saying something like:</p>
+                <p className="italic">"I want a healthy Italian pasta dish with chicken and vegetables, around 500 calories, medium difficulty"</p>
+              </div>
+              
+              <button
+                onClick={() => {
+                  setShowVoiceInput(false);
+                  setVoiceText('');
+                }}
+                className="mt-6 px-6 py-2 border-2 border-gray-300 rounded-xl hover:bg-gray-50 transition font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+
         {showForm && (
           <div className="bg-white/90 backdrop-blur rounded-2xl shadow-xl p-4 sm:p-6 mb-6 sm:mb-8 border border-orange-100">
             <div className="flex items-center gap-2 mb-4 sm:mb-6">
