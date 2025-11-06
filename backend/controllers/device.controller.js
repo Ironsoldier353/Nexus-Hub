@@ -50,6 +50,8 @@ export const registerDevice = async (req, res) => {
 
         await createdDevice.save();
 
+        //room.devices.push(createdDevice._id);
+
         return res.status(201).json({
             success: true,
             message: 'Device registered successfully',
@@ -116,9 +118,6 @@ export const validateDevices = async (req, res) => {
         res.status(500).json({ message: "Internal server error.", success: false });
     }
 };
-
-
-
 
 export const getAllDevices = async (req, res) => {
     try {

@@ -43,4 +43,7 @@ app.use('/api/v1/rooms', roomRoutes);
 import deviceRoutes from './routes/device.route.js';
 app.use('/api/v1/devices', deviceRoutes);
 
+import recipeRoutes from './routes/recipe.route.js';
+app.use('/api/v1/recipes', recipeRoutes);
+
 

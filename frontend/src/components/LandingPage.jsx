@@ -100,12 +100,6 @@ const LandingPage = () => {
               Quick Guide
             </Link>
             <Link
-              to="/find-room"
-              className="bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-opacity-90 transition-all transform hover:scale-105 shadow-md"
-            >
-              Find Room
-            </Link>
-            <Link
               to="/setup-room"
               className="bg-gradient-to-r from-green-600 to-teal-600 text-white font-bold py-3 px-8 rounded-lg hover:bg-opacity-90 transition-all transform hover:scale-105 shadow-md"
             >
@@ -145,12 +139,10 @@ const LandingPage = () => {
         <h2 className="text-3xl md:text-4xl font-semibold text-white mb-12">Smart Home Features</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-6xl mx-auto">
           {[
-            { title: "Smart recognition at door", description: "Control the security of your home remotely with our smart door lock system powered by ESP32." },
+            { title: "Smart recognition at door", description: "Control the security of your home remotely with our website." },
             { title: "Smart Cooking Assistant", description: "Manage your diet with ease. Our smart home automation system suggests recipes based on your calorie needs." },
-            { title: "Voice Automated Music System", description: "An interactive voice controlled music player with spotify app." },
-            { title: "Smart Water Dispenser", description: "The Smart Water Dispenser uses an IR sensor to dispense water automatically for hygiene and convenience." },
-            { title: "Control appliances remotely", description: "Remotely manage your home appliances from anywhere." },
-            { title: "Voice-Activated Home Assistant", description: "Integrate voice-activated technology to control various electronic appliances in your home." }
+            { title: "Mood-based Music Playback System", description: "An interactive music player with YouTube." },
+            { title: "Control appliances remotely", description: "Remotely manage your home appliances from anywhere." }
           ].map((feature, index) => (
             <div
               key={index}

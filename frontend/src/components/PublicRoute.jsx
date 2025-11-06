@@ -1,22 +1,20 @@
-/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable react/prop-types */
 import { useEffect } from 'react'
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 
-function ProtectedRoutes1({children}) {
+function PublicRoute({children}) {
     const { user } = useSelector(store=>store.auth);
     const navigate = useNavigate();
-    const debugMode = false;
 
     useEffect(()=>{
-        if(!debugMode && !user){
-            navigate("/login");
+        if(user && user.room){
+            navigate(`/admin/dashboard/${user.room}`);
         }
-    },[user])
+    },[user, navigate])
 
-    // Don't render children if user is not authenticated
-    if(!debugMode && !user){
+    // If user is logged in, don't render the login/signup page
+    if(user && user.room){
         return null;
     }
 
@@ -25,4 +23,4 @@ function ProtectedRoutes1({children}) {
     )
 }
 
-export default ProtectedRoutes1
+export default PublicRoute

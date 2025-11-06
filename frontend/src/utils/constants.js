@@ -1,6 +1,6 @@
 // BASE URL
 export const BASE_URL = "https://nexus-hub-vvqm.onrender.com";
-
+// export const BASE_URL = "http://localhost:8000";
 // ==================== AUTH APIs ====================
 export const SIGNUP_ADMIN_API = `${BASE_URL}/api/v1/auth/admin/register`;
 export const LOGIN_ADMIN_API = `${BASE_URL}/api/v1/auth/admin/login`;

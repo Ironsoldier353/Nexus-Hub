@@ -3,14 +3,7 @@ import LandingPage from '../components/LandingPage';
 import SetupRoom from '../components/auth/Setup-Room';
 import Login from '../components/auth/Login';
 import DashboardAdmin from '../pages/admin/Dashboard-admin';
-import FindRoom from '../components/auth/Find-Room';
-import AddMember from '../components/auth/AddMember';
-import JoinMember from '../components/auth/JoinMember';
-import LoginMember from '../components/auth/LoginMember';
-import DashboardMember from '../pages/member/Dashboard-member';
 import Signup from '../components/auth/Signup';
-import JoinAdmin from '../components/auth/JoinAdmin';
-import RegisterAdmin from '../components/auth/RegisterAdmin';
 import ProtectedRoute1 from '../components/ProtectedRoute1';
 import DashboardDeviceSetup from '../components/dashboard/DashBoardDeviceSetup';
 import DeviceSetup from '@/components/dashboard/DeviceSetup';
@@ -19,72 +12,54 @@ import QuickGuide from '../components/QuickGuide';
 import RegisterAdminGuide from '@/components/quick-guide/RegisterAdminGuide';
 import RegisterMemberGuide from '@/components/quick-guide/RegisterMemberGuide';
 import InviteMemberGuide from '@/components/quick-guide/InviteMemberGuide';
+import PublicRoute from '@/components/PublicRoute';
+import RecipeDashboard from '@/pages/admin/Recipe';
 
 // Define your routes
 const browserRouter = createBrowserRouter([
   {
     path: "/",
-    element: <LandingPage />
+    element: <PublicRoute><LandingPage /></PublicRoute>
   },
   {
     path: "/quick-guide",
-    element: <QuickGuide />
+    element: <PublicRoute><QuickGuide /></PublicRoute>
   },
   {
     path: "/quick-guide/register-as-admin",
-    element: <RegisterAdminGuide />
+    element: <PublicRoute><RegisterAdminGuide /></PublicRoute>
   },
   {
     path: "/quick-guide/register-as-member",
-    element: <RegisterMemberGuide />
+    element: <PublicRoute><RegisterMemberGuide /></PublicRoute>
   },
   {
     path: "quick-guide/invite-member",
-    element: <InviteMemberGuide />
+    element: <PublicRoute><InviteMemberGuide /></PublicRoute>
   },
   {
     path: "/setup-room",
-    element: <SetupRoom />
+    element: <PublicRoute><SetupRoom /></PublicRoute>
   },
   {
     path: "/signup",
-    element: <Signup />
-  },
-  {
+    element: (
+        <PublicRoute>
+            <Signup />
+        </PublicRoute>
+    )
+},
+{
     path: "/login",
-    element: <Login />
-  },
+    element: (
+        <PublicRoute>
+            <Login />
+        </PublicRoute>
+    )
+},
   {
     path: `/admin/dashboard/:roomId`,
     element: <ProtectedRoute1><DashboardAdmin /></ProtectedRoute1>
-  },
-  {
-    path: "/find-room",
-    element: <FindRoom />
-  },
-  {
-    path: "/add-member",
-    element: <AddMember />
-  },
-  {
-    path: "/add-member/join",
-    element: <JoinMember />
-  },
-  {
-    path: "/add-member/login",
-    element: <LoginMember />
-  },
-  {
-    path: `/member/dashboard/:roomId`,
-    element: <DashboardMember />
-  },
-  {
-    path: "/add-admin",
-    element: <JoinAdmin />
-  },
-  {
-    path: "/add-admin/register",
-    element: <RegisterAdmin />
   },
   {
     path: "/admin/dashboard/:roomId/device-setup",
@@ -97,7 +72,18 @@ const browserRouter = createBrowserRouter([
   {
     path: "/admin/:userId",
     element: <ProtectedRoute1><AdminUserDetails /></ProtectedRoute1>
+  },
+  {
+    path: "/admin/dashboard/:roomId/recipes",
+    element: <ProtectedRoute1><RecipeDashboard /></ProtectedRoute1>
+  },
+  {
+    path: "/admin/dashboard/:roomId/recipes",
+    element: <ProtectedRoute1>
+      <RecipeDashboard />
+      </ProtectedRoute1>
   }
+  
   
 ]);
 

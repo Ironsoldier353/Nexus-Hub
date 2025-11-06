@@ -1,23 +1,11 @@
 import mongoose from 'mongoose';
 
 const roomSchema = new mongoose.Schema({
-  admin: [{ 
+  admin: { 
     type: mongoose.Schema.Types.ObjectId, 
     ref: 'User', 
     required: true 
-  }],
-  members: [{ 
-    type: mongoose.Schema.Types.ObjectId, 
-    ref: 'User' 
-  }],
-  inviteCode: { 
-    type: String, 
-    unique: true
   },
-  inviteCodeExpiry: { 
-    type: Date 
-  },
-
   devices: [
     { 
       type: mongoose.Schema.Types.ObjectId, 
@@ -26,7 +14,13 @@ const roomSchema = new mongoose.Schema({
   ],
   macAddress: [{ 
     type: String, 
-  }]
+  }],
+  recipes: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Recipe'
+    }
+  ]
 });
 
-export const Room =  mongoose.model('Room', roomSchema);
+export const Room = mongoose.model('Room', roomSchema);

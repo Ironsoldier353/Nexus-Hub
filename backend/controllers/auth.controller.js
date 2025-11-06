@@ -104,30 +104,18 @@ export const loginAdmin = async (req, res) => {
   if (user.role !== 'admin') {
     return res.status(403).json({ message: 'Access denied. Admins only.', success: false });
   }
+  // res.cookie('token', generateToken(user._id), {
+  //   httpOnly: true, secure: true, maxAge: 86400000,
+  //   sameSite: 'Strict'
+  // });
+
   res.cookie('token', generateToken(user._id), {
     httpOnly: true, secure: true, maxAge: 86400000,
-    sameSite: 'Strict'
+    sameSite: 'None'
   });
 
   //console.log(user);
   res.json({ user, token: generateToken(user._id), success: true, message: 'Admin Logged in successfully' });
-};
-
-export const loginMember = async (req, res) => {
-  const { email, password, roomId } = req.body;
-
-  const user = await User.findOne({ email, room: roomId });
-  if (!user) return res.status(404).json({ message: 'User not found', success: false });
-
-  const isMatch = await bcrypt.compare(password, user.password);
-  if (!isMatch) return res.status(400).json({ message: 'Invalid credentials', success: false });
-
-  res.cookie('token', generateToken(user._id), {
-    httpOnly: true, secure: true, maxAge: 86400000,
-    sameSite: 'Strict'
-  });
-
-  res.json({ user, token: generateToken(user._id), success: true, message: 'Member Logged in successfully' });
 };
 
 export const logout = (req, res) => {
@@ -135,7 +123,7 @@ export const logout = (req, res) => {
     res.cookie('token', '', {
       httpOnly: true,
       secure: true,
-      sameSite: 'Strict',
+      sameSite: 'None',
       maxAge: 0 // Immediately expire the cookie
     });
 

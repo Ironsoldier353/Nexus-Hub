@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars */
 import { useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { Shield, LogOut, Users, Key, Mail, Info, Laptop, Copy, Check } from 'lucide-react';
+import { Shield, LogOut, Key, Copy, Check, Info, ChefHat } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,21 +11,26 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import InviteCodeButton from '../../components/admin/InviteCodeButton';
-import RoomDetails from '../../components/admin/RoomDetails';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import axios from 'axios';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '@/redux/authSlice';
 import { persistStore } from 'redux-persist'
 import store from '@/redux/store';
 import { toast } from 'sonner';
-import { GET_USER_COUNT_API, GET_USER_DETAILS_API, LOGOUT_API } from '@/utils/constants';
+import { GET_USER_DETAILS_API, LOGOUT_API } from '@/utils/constants';
 
 const DashboardAdmin = () => {
   const { roomId } = useParams();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
-  const [userCount, setUserCount] = useState('');
   const [userDetails, setUserDetails] = useState('');
   const [copied, setCopied] = useState(false);
   const dispatch = useDispatch();
@@ -65,21 +70,6 @@ const DashboardAdmin = () => {
       setLoading(false);
     }
   };
-
-  const getUserCount = async () => {
-    try {
-      const res = await axios.get(
-        `${GET_USER_COUNT_API}/${roomId}`,
-        { withCredentials: true }
-      );
-
-      if (res.data.totalUsersLength) {
-        setUserCount(res.data.totalUsersLength);
-      }
-    } catch (error) {
-      console.error(error.response?.data?.message || 'Error fetching user count');
-    }
-  }
 
   const handelGetUserDetails = async () => {
     try {
@@ -143,6 +133,39 @@ const DashboardAdmin = () => {
                     <Badge variant="outline" className="font-mono">
                       {roomId}
                     </Badge>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="p-2 hover:bg-gray-100 rounded-full"
+                        >
+                          <Info className="w-4 h-4 text-indigo-600" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center space-x-2">
+                            <Shield className="w-5 h-5 text-indigo-600" />
+                            <span>What is Room ID?</span>
+                          </DialogTitle>
+                          <DialogDescription className="pt-4 space-y-3 text-left">
+                            <p className="text-gray-700">
+                              The <span className="font-semibold text-indigo-600">Room ID</span> is a unique identifier for your room. It is directly linked with your admin account.
+                            </p>
+                            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                              <p className="text-red-800 font-medium flex items-center space-x-2">
+                                <Shield className="w-4 h-4" />
+                                <span>Important Security Notice</span>
+                              </p>
+                              <p className="text-red-700 text-sm mt-2">
+                                Do not share your Room ID with anyone. Keep it confidential to maintain the security of your room.
+                              </p>
+                            </div>
+                          </DialogDescription>
+                        </DialogHeader>
+                      </DialogContent>
+                    </Dialog>
                     <TooltipProvider>
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -168,25 +191,7 @@ const DashboardAdmin = () => {
                 </div>
               </CardHeader>
               <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                  <button
-                    onClick={getUserCount}
-                    className="group relative p-6 rounded-lg border border-gray-200 bg-white/50 backdrop-blur-sm hover:bg-white/70 transition-all duration-300"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="relative flex flex-col items-center space-y-3">
-                      <div className="p-3 rounded-full bg-gradient-to-r from-blue-100 to-purple-100 group-hover:from-blue-200 group-hover:to-purple-200">
-                        <Users className="w-6 h-6 text-indigo-600 group-hover:text-indigo-700" />
-                      </div>
-                      <span className="font-medium text-gray-700 group-hover:text-gray-900">
-                        Total Users
-                      </span>
-                      <span className="text-sm text-gray-500 group-hover:text-gray-700">
-                        {userCount || "Click to view"}
-                      </span>
-                    </div>
-                  </button>
-
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <Link
                     to={`/admin/dashboard/${user.room}/device-setup`}
                     className="group relative p-6 rounded-lg border border-gray-200 bg-white/50 backdrop-blur-sm hover:bg-white/70 transition-all duration-300"
@@ -224,53 +229,27 @@ const DashboardAdmin = () => {
                       </span>
                     </div>
                   </button>
+
+                  <Link
+                    to={`/admin/dashboard/${user.room}/recipes`}
+                    className="group relative p-6 rounded-lg border border-gray-200 bg-white/50 backdrop-blur-sm hover:bg-white/70 transition-all duration-300"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                    <div className="relative flex flex-col items-center space-y-3">
+                      <div className="p-3 rounded-full bg-gradient-to-r from-blue-100 to-purple-100 group-hover:from-blue-200 group-hover:to-purple-200">
+                        <ChefHat className="w-6 h-6 text-indigo-600 group-hover:text-indigo-700" />
+                      </div>
+                      <span className="font-medium text-gray-700 group-hover:text-gray-900">
+                        Smart Cooking Assistant
+                      </span>
+                      <span className="text-sm text-gray-500 group-hover:text-gray-700">
+                        Manage Recipes
+                      </span>
+                    </div>
+                  </Link>
                 </div>
               </CardContent>
             </Card>
-
-            <div className="grid gap-6 md:grid-cols-2">
-              {/* Room Access Card */}
-              <Card className="backdrop-blur-sm bg-white bg-opacity-90">
-                <CardHeader>
-                  <CardTitle className="text-xl font-semibold">Room Access</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="group relative p-6 rounded-lg border border-gray-200 bg-white/50 backdrop-blur-sm hover:bg-white/70 transition-all duration-300">
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="relative flex flex-col items-center space-y-4">
-                      <div className="p-3 rounded-full bg-gradient-to-r from-blue-100 to-purple-100 group-hover:from-blue-200 group-hover:to-purple-200">
-                        <Mail className="w-6 h-6 text-indigo-600 group-hover:text-indigo-700" />
-                      </div>
-                      <span className="font-medium text-gray-700 group-hover:text-gray-900">
-                        Generate Invite Code
-                      </span>
-                      <InviteCodeButton roomId={roomId} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Room Details Card */}
-              <Card className="backdrop-blur-sm bg-white bg-opacity-90">
-                <CardHeader>
-                  <CardTitle className="text-xl font-semibold">Room Details</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="group relative p-6 rounded-lg border border-gray-200 bg-white/50 backdrop-blur-sm hover:bg-white/70 transition-all duration-300">
-                    <div className="absolute inset-0 bg-gradient-to-r from-blue-500/10 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="relative flex flex-col items-center space-y-4">
-                      <div className="p-3 rounded-full bg-gradient-to-r from-blue-100 to-purple-100 group-hover:from-blue-200 group-hover:to-purple-200">
-                        <Info className="w-6 h-6 text-indigo-600 group-hover:text-indigo-700" />
-                      </div>
-                      <span className="font-medium text-gray-700 group-hover:text-gray-900">
-                        Room Users
-                      </span>
-                      <RoomDetails roomId={roomId} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
           </div>
         ) : (
           <Card className="text-center p-12 backdrop-blur-sm bg-white bg-opacity-90">

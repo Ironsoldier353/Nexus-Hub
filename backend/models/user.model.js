@@ -16,20 +16,23 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 'member'],
-    default: 'member'
+    default: 'admin'
   },
   room: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Room'
   },
+  recipes: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Recipe'
+    }
+  ],
   securityQuestion: {
     type: String,
-    
   },
   securityAnswer: {
     type: String,
-    
   }
 });
 
