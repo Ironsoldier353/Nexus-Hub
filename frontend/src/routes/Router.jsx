@@ -52,9 +52,9 @@ const browserRouter = createBrowserRouter([
 {
     path: "/login",
     element: (
-        <PublicRoute>
+        
             <Login />
-        </PublicRoute>
+        
     )
 },
   {
