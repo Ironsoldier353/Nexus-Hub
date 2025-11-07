@@ -25,8 +25,8 @@ const LandingPage = () => {
       {/* Header */}
       <header className="sticky top-0 z-50 flex justify-between items-center px-6 py-6 bg-gradient-to-r from-gray-800 via-black to-gray-900 backdrop-blur-lg shadow-xl">
         <div className="flex items-center space-x-6">
-          <img src={logo} alt="LumenHive Logo" className="h-14" />
-          <span className="font-bold text-2xl">LumenHive</span>
+          <img src={logo} alt="Nexus-Hub Logo" className="h-14" />
+          <span className="font-bold text-2xl">Nexus-Hub</span>
         </div>
         <nav className="hidden md:flex space-x-12 text-gray-300">
           <button
@@ -116,7 +116,7 @@ const LandingPage = () => {
             Our Vision & Mission
           </h2>
           <p className="text-md md:text-lg text-gray-300 leading-relaxed mb-6">
-            At <span className="text-purple-400 font-semibold">LumenHive</span>, we envision a future where technology seamlessly integrates with daily life, simplifying tasks and elevating comfort. Our Smart Home Automation project is designed to enhance every household’s quality of life, empowering users to manage their homes effortlessly.
+            At <span className="text-purple-400 font-semibold">Nexus-Hub</span>, we envision a future where technology seamlessly integrates with daily life, simplifying tasks and elevating comfort. Our Smart Home Automation project is designed to enhance every household’s quality of life, empowering users to manage their homes effortlessly.
           </p>
           <p className="text-md md:text-lg text-gray-300 leading-relaxed">
             By harnessing the power of <span className="text-indigo-400 font-semibold">ESP32</span>, <span className="text-green-400 font-semibold">IoT</span>, and custom PCB design, we aim to create intuitive, accessible, and sustainable solutions. Our focus is on boosting safety, convenience, and personalization to transform houses into smart, responsive homes.

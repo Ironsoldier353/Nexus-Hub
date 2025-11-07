@@ -79,7 +79,7 @@ const Dashboard = () => {
             <Link to="/">
               <div className="flex items-center">
 
-                <img src={logo} alt="LumenHive Logo" className="h-8" />
+                <img src={logo} alt="Nexus-Hub Logo" className="h-8" />
                 <h1 className="text-xl font-semibold text-gray-800 ml-3">
                   LuminHive
                 </h1>

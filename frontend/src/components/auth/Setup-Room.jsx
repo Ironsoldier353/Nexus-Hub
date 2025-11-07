@@ -18,8 +18,8 @@ const SetupRoom = () => {
     <div className="min-h-screen flex flex-col items-center bg-gradient-to-r from-blue-600 to-blue-700">
       <div className="w-full flex items-center p-4 bg-blue-800">
         <Link to="/" className="flex items-center gap-2 ml-4">
-          <img src={logo} alt="LumenHive Logo" className="h-10 w-auto" />
-          <span className="font-bold text-2xl text-white">LumenHive</span>
+          <img src={logo} alt="Nexus-Hub Logo" className="h-10 w-auto" />
+          <span className="font-bold text-2xl text-white">Nexus-Hub</span>
         </Link>
       </div>
 

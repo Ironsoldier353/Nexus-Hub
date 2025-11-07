@@ -254,7 +254,7 @@ export default function RecipePage() {
               </div>
               <div>
                 <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-orange-600 to-amber-600 bg-clip-text text-transparent">
-                  LumenHive
+                  Nexus-Hub
                 </h1>
                 <p className="text-sm text-gray-600 hidden sm:block">Recipe Collection</p>
               </div>

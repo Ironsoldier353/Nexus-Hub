@@ -52,11 +52,11 @@ export const registerAdmin = async (req, res) => {
       const mailOptions = {
         from: process.env.EMAIL_USER,
         to: email,
-        subject: 'Welcome to LUMENHIVE - Admin Account Created',
+        subject: 'Welcome to Nexus-Hub - Admin Account Created',
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;">
-            <h2 style="color: #333;">Welcome to LumenHive, ${email}!</h2>
-            <p>Your admin account has been created for LumenHive successfully.</p>
+            <h2 style="color: #333;">Welcome to Nexus-Hub, ${email}!</h2>
+            <p>Your admin account has been created for Nexus-Hub successfully.</p>
             <p><strong>Account Details:</strong></p>
             <ul>
               <li><strong>Username:</strong> ${username}</li>
@@ -66,7 +66,7 @@ export const registerAdmin = async (req, res) => {
             <p>You can log in using the following link:</p>
             <p><a href="${process.env.FRONTEND_URL}/login" style="display: inline-block; padding: 10px 20px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">Login to Your Account</a></p>
             <p>If you have any questions, please don't hesitate to contact us.</p>
-            <p>Thank you,<br>The LumenHive Team</p>
+            <p>Thank you,<br>The Nexus-Hub Team</p>
           </div>
         `
       };

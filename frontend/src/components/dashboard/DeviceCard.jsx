@@ -95,7 +95,7 @@ const DeviceCard = ({ device, deviceId }) => {
           <div>
             <h3 className="text-sm font-medium text-gray-500">Device Status</h3>
             <p className="mt-1 text-lg font-medium text-gray-900">
-              {status === "on" ? "Currently Active" : "Currently Inactive"}
+              {status === "active" ? "Currently Active" : "Currently Inactive"}
             </p>
           </div>
           <p className="mt-1 text-m font-medium text-gray-900">MAC ADDRESS :
